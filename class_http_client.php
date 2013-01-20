@@ -1,31 +1,21 @@
 <?php
-/***
-* http client class
-* 2013-1-8 create by rongzedong.
-* 这是一个基于 curl 的http操作类，目前提供 HTTP 的 GET、POST、PUT 操作。
-* 特点： 根据返回类型进行测试，如果是json 就自动转换成 obj 或者 ary。
-*/
 
-/***
-调试：
+/***************************************************************************
+ *
+ * Copyright (c) 2013 rong zedong
+ *
+ **************************************************************************/
 
-$url = 'localhost/json2.php';
-
-$op = new http_client();
-$rp = $op->execute('get', $url);
-//print_r($rp);
-echo($op->response_code);
-echo($op->last_url);
-//print_r($op->response_headers);
-//var_dump($op->response);
-
-$rs = $op->response;
-
-foreach($rs->blog as $item){
-	echo($item->id.'<br>');
-}
-*/
-
+/**
+ * class_http_client.php
+ * 这是一个基于 curl 的http操作类，目前提供 HTTP 的 GET、POST、PUT 操作。
+ * 特点： 根据返回类型进行测试，如果是json 就自动转换成 obj 或者 ary。
+ * @package	oauthclient
+ * @author	rongzedong@msn.com
+ * @version	1.0
+ * history 
+ * 2013.1.8 rong zedong.
+ **/
 
 class http_client
 {
@@ -70,6 +60,7 @@ class http_client
 
 		curl_setopt($this->ch, CURLOPT_HEADER, true);				//是否显示头部信息
 		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);		//
+		//curl_setopt($this->ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 		if($username != ''){
 			curl_setopt($this->ch, CURLOPT_USERPWD, $username . ':' . $password);
 		}
@@ -86,6 +77,7 @@ class http_client
 				if($param){
 					$url = (strpos($url, '?')===false)? $url . '?'.$param : $url.'&'.$param;
 				}
+				//echo($url);
 				break;
 			}
 			case 'post' : {
@@ -124,12 +116,17 @@ class http_client
 		if(is_array($Headers)){
 			curl_setopt($this->ch, CURLOPT_HTTPHEADER, $Headers);
 		}
+		curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, 0);  // for taobao. ssl cert has error. 2013.1.17 rong zedong.
+		//curl_setopt($this->ch, CURLOPT_CAINFO,'ca-bundle1.crt');
+		curl_setopt($this->ch, CURLOPT_SSL_VERIFYHOST, 0); 
+
 		$response = curl_exec($this->ch);
-		//print_r($response);
+
 		$this->error = curl_error($this->ch);
 		$this->errno = curl_errno($this->ch);
-		if ($error != ""){
-			return $result;
+		if ($this->error != ""){
+			throw new Exception("{$this->errno}: {$this->error}", 1);
+			return false;
 		} 
 		$header_size = curl_getinfo($this->ch, CURLINFO_HEADER_SIZE);
 		$headers = substr($response, 0, $header_size);
@@ -174,6 +171,7 @@ class http_client
 							{
 								$this->response[$property] = $value;
 							}
+							return $this->response;
 						}
 						$this->response = $object;
 						break;
@@ -205,6 +203,7 @@ class http_client
 	* GET 方法
 	*/
 	function get($url, $param = '', $Headers = '', $username = '', $password = ''){
+		//echo($url);
 		return $this->execute('GET', $url, $param, $Headers, $username, $password);
 	}
 
@@ -214,4 +213,14 @@ class http_client
 	function put($url, $param = '', $headers = '', $username = '', $password = ''){
 		return $this->execute('PUT', $url, $param, $headers. $username, $password);
 	}
+
+	/**
+	* 暂时么有使用
+	*/
+	private function converJson2Array($json)
+	{
+		$result = json_decode($json, true);
+		return $result;
+	}
+
 }

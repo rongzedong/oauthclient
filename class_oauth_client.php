@@ -1,16 +1,21 @@
 <?php
-/*
- * oauth client class
- * 2013-1-8 create by rongzedong.
+
+/***************************************************************************
+ *
+ * Copyright (c) 2013 rong zedong
+ *
+ **************************************************************************/
+
+/**
+ * class_oauth_client.php
  * 继承自 http client class 因为所有的 oauth操作都是基于 http进行的操作。
  * 
- */
-
-/*
-* https://login.live.com/oauth20_authorize.srf?client_id=CLIENT_ID&scope=SCOPES&response_type=code&redirect_uri=REDIRECT_URI
-* 然后登录到live.com， 再 callback到指定得地址： /Callback.htm?code=AUTHORIZATION_CODE
-* 验证 access_token 和 state 再保存好 access_token 和 refresh：
-*/
+ * @package	oauthclient
+ * @author	rongzedong@msn.com
+ * @version	1.0
+ * history 
+ * 2013.1.8 rong zedong.
+ **/
 
 class oauth_client extends http_client
 {
@@ -46,17 +51,22 @@ class oauth_client extends http_client
 	}
 
 	public function get_oauth_state(){
-		//
-		$_state = &$_SESSION['state'];
-		if($this->state)
-			return $this->state;
-		$this->state = ($_state) ? $_state : 'sp:'.$this->oauth_server.';key:'.rand(1,1000).';';
+		if($_SESSION[$this->oauth_token_name][$this->oauth_server]['state'])
+		{
+			$this->state = $_SESSION[$this->oauth_token_name][$this->oauth_server]['state'];
+		}
+		else
+		{
+			$this->state = 'sp:'.$this->oauth_server.';key:'.rand(1,1000).';';
+			$_SESSION[$this->oauth_token_name][$this->oauth_server]['state'] = $this->state;
+		}
 		return $this->state;
 	}
 
 	function chushihua_state_and_sp(){
 		if($_GET['state']){
-			$_GET['state'] = str_replace('$', ';', $_GET['state']);
+
+			$_GET['state'] = str_replace('$', ';', $_GET['state']); // for microsoft
 			foreach (explode(';', urldecode($_GET['state'])) as $k) {
 				# code...
 				$k = explode(':', $k);
@@ -64,7 +74,24 @@ class oauth_client extends http_client
 					$state[$k[0]] = $k[1];
 			}
 		}
+		if($state['sp'])
+		{// test part. 使用 sp 参数传回的时候，就刷新token
+			unset($_SESSION[$this->oauth_token_name][$this->oauth_server]);
+		}
+
 		$this->oauth_server = ($state['sp'])? $state['sp']:$_GET['sp'];
+		if($this->oauth_server){
+		$_SESSION[$this->oauth_token_name]['sp'] = $this->oauth_server;
+		}
+		else if($_SESSION[$this->oauth_token_name]['sp'])
+		{
+			$this->oauth_server = $_SESSION[$this->oauth_token_name]['sp'];
+		}
+		if(!$this->oauth_server)
+		{
+			throw new Exception("需要指定一个 oauth得sp服务商。", 1);
+		}
+		return $this->oauth_server;
 	}
 
 	/**
@@ -72,21 +99,6 @@ class oauth_client extends http_client
 	*/
 	public function __construct($oauth_sp) {
 		parent::__construct();
-
-		$this->chushihua_state_and_sp();
-
-		if(array_key_exists($this->oauth_server, $oauth_sp))
-		{
-			$this->client_id = $oauth_sp[$this->oauth_server]['client_id'];
-			$this->client_secret = $oauth_sp[$this->oauth_server]['client_secret'];
-		}else{
-			throw new Exception("需要指定一个 oauth得sp服务商。", 1);
-		}
-
-		// 默认返回请求本类实例的php程序
-		//$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
-		$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER["SCRIPT_NAME"];
-
 		// 开启 session
 		if(!$this->session_started && !session_start())
 		{
@@ -94,6 +106,23 @@ class oauth_client extends http_client
 			return false;
 		}
 		$this->session_started = true;
+
+		$this->chushihua_state_and_sp();
+		$this->get_oauth_state();
+
+		if(array_key_exists($this->oauth_server, $oauth_sp))
+		{
+			$this->client_id = $oauth_sp[$this->oauth_server]['client_id'];
+			$this->client_secret = $oauth_sp[$this->oauth_server]['client_secret'];
+			$this->oauth_scope = $oauth_sp[$this->oauth_server]['scope'];
+		}else{
+			throw new Exception("需要为sp服务商增加配置信息（config.php）。", 1);
+		}
+
+		// 默认返回请求本类实例的php程序
+		//$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+		$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER["SCRIPT_NAME"];
+
 		$this->debug = 1;
 		//exit($client_id);
 		//echo('info');
@@ -102,77 +131,106 @@ class oauth_client extends http_client
 			case 'renren':
 				# code...
 				{
-					$this->oauth_dialog_url = 'https://graph.renren.com/oauth/authorize?client_id='.
-					$this->client_id.
-					'&redirect_uri='.
-					$this->oauth_redirect_uri.
-					'&response_type=code&scope='.
-					$this->oauth_scope.
-					'&state='.
-					$this->get_oauth_state();
-
 					$this->access_token_url = 'https://graph.renren.com/oauth/token';
+					$this->oauth_dialog_url = 'https://graph.renren.com/oauth/authorize' . 
+					'?client_id=' . $this->client_id .
+					'&redirect_uri=' . $this->oauth_redirect_uri .
+					'&response_type=code&scope=' . $this->oauth_scope.
+					'&state=' . $this->state;
 				}
 				break;
 			case 'microsoft':
 				{
-					$this->oauth_scope = 'wl.signin wl.basic';
-					$this->oauth_dialog_url = 'https://login.live.com/oauth20_authorize.srf?client_id='.
-					$this->client_id.
-					'&redirect_uri='.
-					$this->oauth_redirect_uri.
-					'&response_type=code&scope='.
-					$this->oauth_scope.
-					'&state='.
-					$this->get_oauth_state();
-
 					$this->access_token_url = 'https://login.live.com/oauth20_token.srf';
+					$this->oauth_dialog_url = 'https://login.live.com/oauth20_authorize.srf'.
+					'?client_id=' . $this->client_id .
+					'&redirect_uri=' . $this->oauth_redirect_uri .
+					'&response_type=code&scope=' . $this->oauth_scope.
+					'&state=' . $this->state;
 				}
 				break;
 			case 'taobao':
 				{
-					$this->oauth_dialog_url = 'https://oauth.taobao.com/authorize?client_id='.
-					$this->client_id.
-					'&redirect_uri='.
-					$this->oauth_redirect_uri.
-					'&response_type=code'.
-					'&state='.
-					$this->get_oauth_state().
-					'&scope=' . $this->oauth_scope;
-
 					$this->access_token_url = 'https://oauth.taobao.com/token';
-
+					$this->oauth_dialog_url = 'https://oauth.taobao.com/authorize' .
+					'?client_id=' . $this->client_id .
+					'&redirect_uri=' . $this->oauth_redirect_uri .
+					'&response_type=code&scope=' . $this->oauth_scope.
+					'&state=' . $this->state;
 				}
 				break;
+			case 'google':
+			{
+				throw new Exception("no support yet.", 1);
+				
+				$this->access_token_url = 'https://accounts.google.com/o/oauth2/token';
+				$this->oauth_dialog_url = 'https://accounts.google.com/o/oauth2/auth'.
+				'?client_id=' . $this->client_id .
+				'&redirect_uri=' . $this->oauth_redirect_uri .
+				'&response_type=code&scope=' . $this->oauth_scope.
+				'&state=' . $this->state;
+				break;
+			}
+			case 'baidu':
+			{
+				$params = array(
+					'client_id'		=> $this->client_id,
+					'response_type'	=> 'code',
+					'redirect_uri'	=> $this->oauth_redirect_uri,
+					'scope'			=> $this->oauth_scope,
+					'state'			=> $this->state,
+					//'display'		=> $display,
+				);
+				$this->oauth_dialog_url = 'https://openapi.baidu.com/oauth/2.0/authorize' . '?' . http_build_query($params, '', '&');
+				$this->access_token_url = 'https://openapi.baidu.com/oauth/2.0/token';
+				break;
+			}
+			case 'qq':
+			{
+				$this->access_token_url = 'https://graph.qq.com/oauth2.0/token';
+				$this->oauth_dialog_url = 'https://graph.qq.com/oauth2.0/authorize'.
+				'?client_id=' . $this->client_id .
+				'&redirect_uri=' . $this->oauth_redirect_uri .
+				'&response_type=code&scope=' . $this->oauth_scope.
+				'&state=' . $this->state;
+				break;
+			}
 			default:
 				# code...
 				throw new Exception("必须输入一个参数作为 oauth_server 提供商，可用的有  renren, microsoft, taobao 等", 1);
 					return false;
 				break;
 		}
-		// if login else
-		if($_GET['code'] && $_GET['state'])
+
+		// 	正常初始化完毕，如果已经登录则读取token
+		if($_SESSION[$this->oauth_token_name][$this->oauth_server]['status'])
 		{
-			//
-			$this->get_access_token($_GET['code']);
+			$this->token = &$_SESSION[$this->oauth_token_name][$this->oauth_server];
 		}
-		else
-		{
-			if($_GET['error'] || $_GET['error_description'])
+		else{
+			// login else
+			if($_GET['code'] && $_GET['state'])
 			{
-				throw new Exception("{$_GET['error']}: {$_GET[error_description]}", 1);
+				$method = ($oauth_sp[$this->oauth_server]['method'])?$oauth_sp[$this->oauth_server]['method']:'post';
+				$this->get_access_token($_GET['code'], $method);
+			}
+			else
+			{
+				if($_GET['error'] || $_GET['error_description'])
+				{
+					throw new Exception("{$_GET['error']}: {$_GET[error_description]}", 1);
+				}
+				Header('HTTP/1.0 302 OAuth Redirection');
+				header('Location: '.$this->oauth_dialog_url);
 			}
 
-			// 转入 登录页面
-			Header('HTTP/1.0 302 OAuth Redirection');
-			header('Location: '.$this->oauth_dialog_url);
 		}
 	}
 
     /**
     * 第二步，获取 access_token
     */
-	public function get_access_token($code){
+	public function get_access_token($code, $method = 'post'){
 		//
 		if($code){
 			//请求参数
@@ -183,8 +241,23 @@ class oauth_client extends http_client
 				'code'          => $code,
 				'redirect_uri'  => $this->oauth_redirect_uri,
 				);
-
-			$token = $this->post($this->access_token_url, $postfields);
+			// TODO qq use the get, post is ok?
+			if($method == 'get')
+			{
+				// do get
+				$token = $this->get($this->access_token_url .'?'. http_build_query($postfields , '', '&'));
+				//print_r($str_token);
+				if(GetType($token) == 'string')
+				{
+					parse_str($token, $array_token);
+					$token = (object) $array_token;
+				}
+				//echo($token->access_token);
+			}
+			else
+			{
+				$token = $this->post($this->access_token_url, $postfields);
+			}
 			//var_dump($token);
 			$this->token = array(
 				'access_token' => $token->access_token,
@@ -193,6 +266,7 @@ class oauth_client extends http_client
 				'expires_in'=>$token->expires_in, 		// 没啥用
 				'user_name'=>'',
 				'user_id'=>'',
+				'status'=>'0',
 				);
 
 			switch ($this->oauth_server) {
@@ -208,113 +282,94 @@ class oauth_client extends http_client
 					$this->token['user_name'] = urldecode($token->taobao_user_nick);
 					break;
 				}
+				case 'microsoft':
+				{
+
+					//GET 
+					$url = 'https://apis.live.net/v5.0/me'.
+						'?access_token='. $this->token['access_token'];
+					$user = $this->get($url);
+					$this->token['user_id'] = $user->id; // no support yet.
+					$this->token['user_name'] = $user->name;
+					break;
+				}
+				case 'google':
+				{
+					//$this->token['user_id'] = $token->taobao_user_id; // no support yet.
+					//$this->token['user_name'] = urldecode($token->taobao_user_nick);
+					break;
+				}
+				case 'baidu':
+				{
+					//print_r($token);
+					$url = 'https://openapi.baidu.com/rest/2.0/passport/users/getLoggedInUser'.
+						'?access_token='. $this->token['access_token'];
+					$user = json_decode($this->get($url));
+					//print_r($user);
+					//uid,uname,portrait
+					//exit;
+					$this->token['user_id'] = $user->uid;
+					$this->token['user_name'] = $user->uname;
+					break;
+				}
+				case 'qq':
+				{
+					$graph_url = "https://graph.qq.com/oauth2.0/me?access_token=".
+					$this->token['access_token'];
+					//echo($graph_url);
+					$str = $this->get($graph_url);
+					if (strpos($str, "callback") !== false)
+					{
+						$lpos = strpos($str, "(");
+						$rpos = strrpos($str, ")");
+						$str  = substr($str, $lpos + 1, $rpos - $lpos -1);
+					}
+					$user = json_decode($str);
+
+					if (isset($user->error))
+					{
+					echo "<h3>error:</h3>" . $user->error;
+					echo "<h3>msg  :</h3>" . $user->error_description;
+					exit;
+					}
+					$_SESSION[$this->oauth_token_name]['openid'] = $user->openid;
+
+					$get_user_info_url = 'https://graph.qq.com/user/get_user_info?access_token='.
+						$this->token['access_token'].
+						'&oauth_consumer_key='.
+						$this->client_id.
+						'&openid='.
+						$_SESSION[$this->oauth_token_name]['openid'];
+					$user = $this->get($get_user_info_url);
+
+					$this->token['user_id'] = 1; // no support yet.
+					$this->token['user_name'] = $user->nickname;
+					break;
+				}
 				
 				default:
 					# code...
 					break;
 			}
+			//var_dump($token);
+			//var_dump($this->token);
+			if($this->token['user_id'])
+			{
+				if($_GET['state']==$this->state)
+				{
+					$this->token['status'] = 1;
+					$_SESSION[$this->oauth_token_name][$this->oauth_server] = $this->token;
+				}
+				else
+				{
+					throw new Exception("跨站攻击？ GET_STATE:".$_GET['state'].'; SESSION_STATE:'.$this->state, 1);
+					
+				}
+			}else
+			{
+				throw new Exception("登录失败。", 1);
+			}
 
-			//print_r($this->token);
-/*
-			$_SESSION['oauth2']['access_token'] = $access_token = $token->access_token;
-			$_SESSION['oauth2']['refresh_token'] = $refresh_token = $token->refresh_token;
-			$_SESSION['oauth2']['user_id'] = $user_id = $token->taobao_user_id;
-			$_SESSION['oauth2']['user_nick'] = $user_nick = urldecode($token->taobao_user_nick);
-*/
 		}
 	}
-
-//			$state = $_SESSION['OAUTH_STATE'] = time().'-'.substr(md5(rand().time()), 0, 6);
-
-
-	/**
-	* 暂时不知道是否有必要的编码函数，暂时保留
-	*/
-	Function Encode($value)
-	{
-		return(is_array($value) ? $this->EncodeArray($value) : str_replace('%7E', '~', str_replace('+',' ', RawURLEncode($value))));
-	}
-
-	Function EncodeArray($array)
-	{
-		foreach($array as $key => $value)
-		{
-			$array[$key] = $this->Encode($value);
-		}
-		return $array;
-	}
-
-	/**
-	* 编码函数
-	* 修改完毕
-	*/
-	Function HMAC($function, $data, $key = '')
-	{
-		switch($function)
-		{
-			case 'sha1':
-				if($key=='')
-					throw new exception('key is null.');
-				$pack = 'H40';
-				break;
-			case 'md5':
-				return md5($data);
-				break;
-			default:
-				throw new exception($function.' is not a supported an HMAC hash type');
-				return false;
-		}
-		if(strlen($key) > 64) // 如果key 大于 64
-			$key = pack($pack, $function($key)); // 处理 key
-		if(strlen($key) < 64) // 否则这是干啥呢？
-			$key = str_pad($key, 64, "\0");
-		return base64_encode(pack($pack, $function((str_repeat("\x5c", 64) ^ $key).pack($pack, $function((str_repeat("\x36", 64) ^ $key).$data)))));
-	}
-
 }
-
-
-
-
-/*
-
-				$this->dialog_url = 'https://accounts.google.com/o/oauth2/auth?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope={SCOPE}&state={STATE}';
-				$this->access_token_url = 'https://accounts.google.com/o/oauth2/token';
-
-					if(IsSet($response['expires'])
-					|| IsSet($response['expires_in']))
-					{
-						$expires = (IsSet($response['expires']) ? $response['expires'] : $response['expires_in']);
-						if(strval($expires) !== strval(intval($expires))
-						|| $expires <= 0)
-							return($this->SetError(__line__.'/OAuth server did not return a supported type of access token expiry time'));
-						$this->access_token_expiry = gmstrftime('%Y-%m-%d %H:%M:%S', time() + $expires);
-						if($this->debug)
-							$this->OutputDebug(__line__.'/Access token expiry: '.$this->access_token_expiry.' UTC');
-						$access_token['expiry'] = $this->access_token_expiry;
-					}
-					else
-						$this->access_token_expiry = '';
-					if(IsSet($response['token_type']))
-					{
-						$this->access_token_type = $response['token_type'];
-						if($this->debug)
-							$this->OutputDebug(__line__.'/Access token type: '.$this->access_token_type);
-						$access_token['type'] = $this->access_token_type;
-					}
-					else
-						$this->access_token_type = '';
-					if(!$this->StoreAccessToken($access_token))
-						return false;
-*/
-
-
-
-/*
-$op = new oauth_client();
-$key = $op->Encode($op->client_secret).'&'.$op->Encode($op->access_token_secret);
-$r = $op->HMAC('sha1', 'data', $key);
-echo($r);
-echo($op->encode('info'));
-
-*/
