@@ -1,7 +1,7 @@
 oauthclient
 ===========
-  oauth 的php 客户端其实挺多了，但是通用的 oauth客户端似乎并不多，或者不容易那么通用。国外的oauth客户端做的不错，但是针对国内网站的似乎就没有。
-  本客户端基于 php 和 curl 来实现的。
+  oauth 的php 客户端其实挺多了，但是通用的 oauth客户端 似乎并不多，或者不容易那么通用。国外的 oauth客户端 做的不错，但是针对国内网站的似乎就没有。
+  本客户端基于 php 和 curl 来实现的，目前，可以支持 baidu、qq、renren、淘宝和微软的帐号，只要简单的修改支持这五种帐号登录到你的应用。
   
 # [oauth 2.0 client v1](https://github.com/rongzedong/oauthclient) 
 
@@ -18,38 +18,52 @@ oauthclient
 ## 版本号
 
 版本号信息和说明
-
+1.0.2 已经发布，beta测试中。
 
 ## 报告错误
 
-Have a bug or a feature request? [Please open a new issue](https://github.com/rongzedong/oauthclient/issues). 
+错误反馈请访问 [Please open a new issue](https://github.com/rongzedong/oauthclient/issues). 
 
 ## 交流
 
-开发新闻.
-
-* 博客
-* QQ
-* QQ群
+* QQ 85120358
 
 
+## 演示
 
-## 开发
+使用起来很简单，直接查看 demo.php 就可以了。
 
-开发库
+config.php的 demo如下
 
-+ **重点**
-说明:
+<?php
 
-```
-$ 命令行
-```
 
-+ **构建** - `make`
-支持HTML代码
+$oauth_sp = array(
+	'taobao'=>array( // http://my.open.taobao.com/xtao/website_list.htm
+		'client_id'=>'',
+		'client_secret'=>''),
+	'renren'=>array( // http://app.renren.com/developers/newapp
+		'client_id'=>'',
+		'client_secret'=>''),
+	'baidu'=>array( // http://developer.baidu.com/dev#/applist!type=2&only_channel_list=1
+		'client_id' => '',
+		'client_secret' => '',
+		'method'=>'get',),
+	'qq'=>array( // http://connect.qq.com/manage/
+		'client_id' => '',
+		'client_secret' => '',
+		// 下面两行不要修改
+		'scope' => 'get_user_info add_share,check_page_fans,add_t,del_t,add_pic_t,get_repost_list,get_info,get_other_info,get_fanslist,get_idollist,add_idol,del_idol,match_nick_tips_weibo,get_intimate_friends_weibo',
+		'method'=>'get',),
+	'microsoft'=>array(// https://manage.dev.live.com/Applications/Index
+		'client_id'=>'',
+		'client_secret'=>'',
+		// 下面两行不要修改
+		'scope'=>'wl.signin wl.basic',
+		'method'=>'get',
+		),
+	);
 
-+ **测试** - `make test`
-测试
 
 
 ## Authors

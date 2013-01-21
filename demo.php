@@ -6,7 +6,10 @@ include('config.php');
 $oauth_sp = array(
 	'taobao'=>array(
 		'client_id'=>'ID',
-		'client_secret'=>'SECRET'),
+		'client_secret'=>'SECRET',
+		'method'=>'post', // default is post, but some sp need method of get.
+		'scope'=>'', // microsoft must be send this param.
+		),
 	);
 */
 
@@ -15,10 +18,12 @@ include('class_oauth_client.php');
 include('class_baidu_api.php');
 include('class_taobao_api.php');
 include('class_qq_api.php');
+include('class_weibo_api.php');
 
 $op = new oauth_client($oauth_sp);
 
 //print_r($op->token);
+echo('欢迎你， '.$op->token['user_name']);
 
 switch ($op->oauth_server) {
 	case 'taobao':
@@ -35,7 +40,6 @@ switch ($op->oauth_server) {
 	{
 		$bd = new baidu_api($op);
 		$user = $bd->call('passport/users/getInfo');
-		echo('欢迎你， '.$op->token['user_name']);
 
 		echo(
 			'realname is '.
@@ -52,7 +56,7 @@ switch ($op->oauth_server) {
 	{
 		$qq = new qq_api($op);
 		$user = $qq->call('user/get_info');
-		echo('欢迎你， '.$op->token['user_name']);
+
 
 		if($user->data->name)
 		{
@@ -72,19 +76,28 @@ switch ($op->oauth_server) {
 	case 'renren':
 	{
 		# code...
-		echo('欢迎你， '.$op->token['user_name']);
+
 		break;
 	}
 
 	case 'microsoft':
 	{
 		# code...
-		echo('欢迎你， '.$op->token['user_name']);
+
 		break;
 	}
-	
+	case 'weibo':
+		$api = new weibo_api($op);
+		$user = $api->call('users/show', array('uid'=>$op->token['user_id']));
+		//print_r($user);
+		echo(
+			' come from '.
+			$user->location.', name is '.
+			$user->name
+			);
+		# code...
+		break;
 	default:
 		# code...
-		echo('欢迎你， '.$op->token['user_name']);
 		break;
 }

@@ -56,7 +56,14 @@ class http_client
 	* 执行相应的方法并返回结果
 	*/
 	public function execute($method, $url, $param='', $Headers='', $username='', $password=''){
+		$method = strtolower($method);
 		$this->init_curl();
+
+		if($method == 'get'){
+			$this->ch = curl_init(); // hack for after the method of post and other method.
+		}
+
+		//echo($method);
 
 		curl_setopt($this->ch, CURLOPT_HEADER, true);				//是否显示头部信息
 		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);		//
@@ -64,7 +71,6 @@ class http_client
 		if($username != ''){
 			curl_setopt($this->ch, CURLOPT_USERPWD, $username . ':' . $password);
 		}
-		$method = strtolower($method);
 		switch($method){
 			case 'get' :{
 				if(is_array($param)){
@@ -94,6 +100,21 @@ class http_client
 			}
 			case 'put':{
 				curl_setopt($this->ch, CURLOPT_PUT, true);
+				break;
+			}
+
+			case 'delete':{
+				curl_setopt($this->ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+				if(is_array($param)){
+					$sets = array();
+					foreach ($param AS $key => $val){
+						$sets[] = $key . '=' . urlencode($val);
+					}
+					$postfields = implode('&',$sets);
+				}
+				if (!empty($postfields)) {
+					$url = "{$url}?{$postfields}";
+				}
 				break;
 			}
 			default:{

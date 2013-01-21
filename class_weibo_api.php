@@ -7,17 +7,17 @@
  **************************************************************************/
 
 /**
- * class_qq_api.php
+ * class_weibo_api.php
  * 
  * 
  * @package	oauthclient
  * @author	rongzedong@msn.com
  * @version	1.0
  * history 
- * 2013.1.18 rong zedong.
+ * 2013.1.21 rong zedong.
  **/
 
-class qq_api
+class weibo_api
 {
 
 	var $fields = array(
@@ -25,23 +25,20 @@ class qq_api
 		);
 
 	var $home_url 		= 'http://www.oo8h.com/';
-	var $api_url 		= 'https://graph.qq.com/';
+	var $api_url 		= 'https://api.weibo.com/2/';
 
 	var $op;
 
 	function call($action, $postFields = ''){
 
 		$req["access_token"] = $this->op->token['access_token'];
-		$req["oauth_consumer_key"] = $this->op->client_id;
-		$req["openid"] = $this->op->token['user_id'];
-		$req["format"] = "json";
 
 		if(array_key_exists($action, $this->fields))
 			$req['fields'] = $this->fields[$action];
 
 		if(is_array($postFields)) $req = array_merge($req, $postFields);
 
-		$url = $this->api_url . $action . "?" . http_build_query($req, '', '&');
+		$url = $this->api_url . $action . ".json?" . http_build_query($req, '', '&');
 		//echo($url);
 		$rp = $this->op->get($url);
 		//print_r($rp);

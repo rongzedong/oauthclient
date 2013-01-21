@@ -7,6 +7,37 @@
  **************************************************************************/
 
 /**
+ * class_oauth_token.php
+ * 用于普通前端验证是否登录 获取用户基本信息等
+ * 
+ * @package	oauthclient
+ * @author	rongzedong@msn.com
+ * @version	1.0
+ * history 
+ * 2013.1.20 rong zedong.
+ **/
+
+class oauth_token
+{
+	function is_login(){
+		if(is_array($_SESSION['OAUTH'])){
+			//print_r($_SESSION['OAUTH']);
+			return (object) $_SESSION['OAUTH'][$_SESSION['OAUTH']['sp']];
+		}
+		return false;
+	}
+
+	function get_token(){
+		if(is_array($_SESSION['OAUTH'])){
+			//print_r($_SESSION['OAUTH']);
+			return (object) $_SESSION['OAUTH'];
+		}
+		return false;
+	}
+
+}
+
+/**
  * class_oauth_client.php
  * 继承自 http client class 因为所有的 oauth操作都是基于 http进行的操作。
  * 
@@ -105,6 +136,10 @@ class oauth_client extends http_client
 			throw new exception('请打开 PHP 的 session 支持。');
 			return false;
 		}
+
+		$cookies_life_time = 24 * 3600;   //过期时间，单位为秒，这里的设置即为一天
+		setcookie(session_name() ,session_id(), time() + $cookies_life_time, "/");
+
 		$this->session_started = true;
 
 		$this->chushihua_state_and_sp();
@@ -195,7 +230,19 @@ class oauth_client extends http_client
 				'&state=' . $this->state;
 				break;
 			}
-			default:
+
+			case 'weibo':
+			{
+				$this->access_token_url = 'https://api.weibo.com/oauth2/access_token';
+				$this->oauth_dialog_url = 'https://api.weibo.com/oauth2/authorize'.
+				'?client_id=' . $this->client_id .
+				'&redirect_uri=' . $this->oauth_redirect_uri .
+				'&response_type=code&scope=' . $this->oauth_scope.
+				'&state=' . $this->state;
+				break;
+			}
+
+		default:
 				# code...
 				throw new Exception("必须输入一个参数作为 oauth_server 提供商，可用的有  renren, microsoft, taobao 等", 1);
 					return false;
@@ -245,8 +292,8 @@ class oauth_client extends http_client
 			if($method == 'get')
 			{
 				// do get
-				$token = $this->get($this->access_token_url .'?'. http_build_query($postfields , '', '&'));
-				//print_r($str_token);
+				$url = $this->access_token_url .'?'. http_build_query($postfields , '', '&');
+				$token = $this->get($url);
 				if(GetType($token) == 'string')
 				{
 					parse_str($token, $array_token);
@@ -325,6 +372,7 @@ class oauth_client extends http_client
 						$str  = substr($str, $lpos + 1, $rpos - $lpos -1);
 					}
 					$user = json_decode($str);
+					$openid = $user->openid;
 
 					if (isset($user->error))
 					{
@@ -332,18 +380,29 @@ class oauth_client extends http_client
 					echo "<h3>msg  :</h3>" . $user->error_description;
 					exit;
 					}
-					$_SESSION[$this->oauth_token_name]['openid'] = $user->openid;
 
 					$get_user_info_url = 'https://graph.qq.com/user/get_user_info?access_token='.
 						$this->token['access_token'].
 						'&oauth_consumer_key='.
 						$this->client_id.
 						'&openid='.
-						$_SESSION[$this->oauth_token_name]['openid'];
+						$openid;
 					$user = $this->get($get_user_info_url);
 
-					$this->token['user_id'] = 1; // no support yet.
+					$this->token['user_id'] = $openid;
 					$this->token['user_name'] = $user->nickname;
+					break;
+				}
+				case 'weibo':
+				{
+					//throw new Exception("not support yet.", 1);
+
+					$url = "https://api.weibo.com/2/account/get_uid.json?access_token=".$this->token['access_token'];
+					$user = $this->get($url);
+					$url = 'https://api.weibo.com/2/users/show.json?access_token='.$this->token['access_token'].'&uid='.$user->uid;
+					$user = $this->get($url);
+					$this->token['user_id'] = $user->id;
+					$this->token['user_name'] = $user->screen_name;
 					break;
 				}
 				

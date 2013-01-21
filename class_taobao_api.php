@@ -58,6 +58,11 @@ class taobao_api
 
 		$url = $this->api_url . "?" . http_build_query($req, '', '&');
 		$rp = $this->op->get($url);
+		if($rp->error_response->code >0)
+		{
+			echo('error code: '.$rp->error_response->code.'; msg: '. $rp->error_response->msg);
+			exit;
+		}
 		$response_name = str_replace('.', '_', $action) . "_response"; 
 		return $rp->$response_name;
 	}
