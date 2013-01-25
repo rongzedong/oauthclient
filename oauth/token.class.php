@@ -19,6 +19,10 @@
 
 class oauth_token
 {
+	var $user_id;
+	var $user_name;
+	var $sp;
+
 	function is_login(){
 		if(is_array($_SESSION['OAUTH'])){
 			//print_r($_SESSION['OAUTH']);
@@ -30,9 +34,17 @@ class oauth_token
 	function get_token(){
 		if(is_array($_SESSION['OAUTH'])){
 			//print_r($_SESSION['OAUTH']);
+			$this->user_id = $_SESSION['OAUTH'][$_SESSION['OAUTH']['sp']]['user_id'];
+			$this->user_name = $_SESSION['OAUTH'][$_SESSION['OAUTH']['sp']]['user_name'];
+			$this->sp = $_SESSION['OAUTH']['sp'];
+
 			return (object) $_SESSION['OAUTH'];
 		}
 		return false;
 	}
 
+	public function __construct() {
+		@session_start();
+		$this->get_token();
+	}
 }

@@ -130,7 +130,8 @@ class oauth_client extends http_client
 
 		// 默认返回请求本类实例的php程序
 		//$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
-		$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER["SCRIPT_NAME"];
+		$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER["PATH_INFO"];
+		//_SERVER["SCRIPT_NAME"];
 
 		$this->debug = 1;
 		//exit($client_id);
