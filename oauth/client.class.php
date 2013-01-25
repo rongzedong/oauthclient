@@ -77,26 +77,28 @@ class oauth_client extends http_client
 		if($state['sp'])
 		{// test part. 使用 sp 参数传回的时候，就刷新token
 			unset($_SESSION[$this->oauth_token_name][$this->oauth_server]);
+			$this->oauth_server = $state['sp'];
+			$_SESSION[$this->oauth_token_name]['sp'] = $this->oauth_server;
+			return $this->oauth_server;
 		}
 
-		$this->oauth_server = ($state['sp'])? $state['sp']:$_GET['sp'];
-		if($this->oauth_server){
-		$_SESSION[$this->oauth_token_name]['sp'] = $this->oauth_server;
-		}
-		else if($_SESSION[$this->oauth_token_name]['sp'])
+		if($_GET['sp'])
 		{
-			$this->oauth_server = $_SESSION[$this->oauth_token_name]['sp'];
+
+			$this->oauth_server = $_GET['sp'];
+			$_SESSION[$this->oauth_token_name]['sp'] = $this->oauth_server;
+			return $this->oauth_server;
 		}
-		if(!$this->oauth_server)
+
+		if($default_sp)
 		{
-			if($default_sp)
-			{
-				$this->oauth_server = $default_sp;
-			}else{
-				throw new Exception("需要指定一个 oauth得sp服务商。", 1);
-			}
+
+			$this->oauth_server = $default_sp;
+			$_SESSION[$this->oauth_token_name]['sp'] = $this->oauth_server;
+			return $this->oauth_server;
 		}
-		return $this->oauth_server;
+		throw new Exception("需要指定一个 oauth得sp服务商。", 1);
+		return false;
 	}
 
 	/**
@@ -111,8 +113,8 @@ class oauth_client extends http_client
 			return false;
 		}
 
-		$cookies_life_time = 24 * 3600;   //过期时间，单位为秒，这里的设置即为一天
-		setcookie(session_name() ,session_id(), time() + $cookies_life_time, "/");
+		//$cookies_life_time = 24 * 3600;   //过期时间，单位为秒，这里的设置即为一天
+		//setcookie(session_name() ,session_id(), time() + $cookies_life_time, "/");
 
 		$this->session_started = true;
 
@@ -129,9 +131,14 @@ class oauth_client extends http_client
 		}
 
 		// 默认返回请求本类实例的php程序
-		//$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
-		$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER["PATH_INFO"];
-		//_SERVER["SCRIPT_NAME"];
+		if(class_exists('Core', true))
+		{
+			$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER["PATH_INFO"];
+		}else{
+			//$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+			$this->oauth_redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].$_SERVER["SCRIPT_NAME"];
+			//_SERVER["SCRIPT_NAME"];
+		}
 
 		$this->debug = 1;
 		//exit($client_id);
@@ -356,16 +363,33 @@ class oauth_client extends http_client
 					exit;
 					}
 
-					$get_user_info_url = 'https://graph.qq.com/user/get_user_info?access_token='.
+
+					$get_user_info_url = 'https://graph.qq.com/user/get_info?access_token='.
 						$this->token['access_token'].
 						'&oauth_consumer_key='.
 						$this->client_id.
 						'&openid='.
 						$openid;
-					$user = $this->get($get_user_info_url);
+					$user = json_decode($this->get($get_user_info_url));
+					if((string)$user->data->nick<>'') $user_name = $user->data->nick;
 
+					if(!$user_name){
+						//$get_user_info_url = 'https://graph.qq.com/user/get_info?access_token='.
+						$get_user_info_url = 'https://graph.qq.com/user/get_user_info?access_token='.
+							$this->token['access_token'].
+							'&oauth_consumer_key='.
+							$this->client_id.
+							'&openid='.
+							$openid;
+						$user = $this->get($get_user_info_url);
+						$user_name = $user->nickname;
+						if($user_name == 'qzuser')
+						{
+							//
+						}
+					}
+					$this->token['user_name'] = $user_name;
 					$this->token['user_id'] = $openid;
-					$this->token['user_name'] = $user->nickname;
 					break;
 				}
 				case 'weibo':

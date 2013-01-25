@@ -26,7 +26,7 @@ class oauth_token
 	function is_login(){
 		if(is_array($_SESSION['OAUTH'])){
 			//print_r($_SESSION['OAUTH']);
-			return (object) $_SESSION['OAUTH'][$_SESSION['OAUTH']['sp']];
+			return (isset($_SESSION['OAUTH'][$_SESSION['OAUTH']['sp']]['user_id']));
 		}
 		return false;
 	}
