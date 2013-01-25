@@ -17,7 +17,7 @@
  * 2013.1.18 rong zedong.
  **/
 
-class qq_api
+class api_qq
 {
 
 	var $fields = array(

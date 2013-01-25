@@ -17,7 +17,7 @@
  * 2013.1.16 rong zedong.
  **/
 
-class taobao_api
+class api_taobao
 {
 
 	var $fields = array(

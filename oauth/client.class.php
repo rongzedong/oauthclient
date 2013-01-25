@@ -7,37 +7,6 @@
  **************************************************************************/
 
 /**
- * class_oauth_token.php
- * 用于普通前端验证是否登录 获取用户基本信息等
- * 
- * @package	oauthclient
- * @author	rongzedong@msn.com
- * @version	1.0
- * history 
- * 2013.1.20 rong zedong.
- **/
-
-class oauth_token
-{
-	function is_login(){
-		if(is_array($_SESSION['OAUTH'])){
-			//print_r($_SESSION['OAUTH']);
-			return (object) $_SESSION['OAUTH'][$_SESSION['OAUTH']['sp']];
-		}
-		return false;
-	}
-
-	function get_token(){
-		if(is_array($_SESSION['OAUTH'])){
-			//print_r($_SESSION['OAUTH']);
-			return (object) $_SESSION['OAUTH'];
-		}
-		return false;
-	}
-
-}
-
-/**
  * class_oauth_client.php
  * 继承自 http client class 因为所有的 oauth操作都是基于 http进行的操作。
  * 
@@ -94,7 +63,7 @@ class oauth_client extends http_client
 		return $this->state;
 	}
 
-	function chushihua_state_and_sp(){
+	function chushihua_state_and_sp($default_sp = ''){
 		if($_GET['state']){
 
 			$_GET['state'] = str_replace('$', ';', $_GET['state']); // for microsoft
@@ -120,7 +89,12 @@ class oauth_client extends http_client
 		}
 		if(!$this->oauth_server)
 		{
-			throw new Exception("需要指定一个 oauth得sp服务商。", 1);
+			if($default_sp)
+			{
+				$this->oauth_server = $default_sp;
+			}else{
+				throw new Exception("需要指定一个 oauth得sp服务商。", 1);
+			}
 		}
 		return $this->oauth_server;
 	}
@@ -128,7 +102,7 @@ class oauth_client extends http_client
 	/**
 	* 第0步 初始化类 初始化基础信息
 	*/
-	public function __construct($oauth_sp) {
+	public function __construct($oauth_sp, $default_sp = '') {
 		parent::__construct();
 		// 开启 session
 		if(!$this->session_started && !session_start())
@@ -142,7 +116,7 @@ class oauth_client extends http_client
 
 		$this->session_started = true;
 
-		$this->chushihua_state_and_sp();
+		$this->chushihua_state_and_sp($default_sp);
 		$this->get_oauth_state();
 
 		if(array_key_exists($this->oauth_server, $oauth_sp))

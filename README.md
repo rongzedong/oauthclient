@@ -1,7 +1,7 @@
 oauthclient
 ===========
   oauth 的php 客户端其实挺多了，但是通用的 oauth客户端 似乎并不多，或者不容易那么通用。国外的 oauth客户端 做的不错，但是针对国内网站的似乎就没有。
-  本客户端基于 php 和 curl 来实现的，目前，可以支持 baidu、qq、renren、淘宝和微软的帐号，只要简单的修改支持这五种帐号登录到你的应用。
+  本客户端基于 php 和 curl 来实现的，目前，可以支持 baidu、qq、renren、淘宝、weibo.com和微软的帐号，只要简单的修改支持这六种帐号登录到你的应用。
   
 # [oauth 2.0 client v1](https://github.com/rongzedong/oauthclient) 
 
@@ -18,7 +18,30 @@ oauthclient
 ## 版本号
 
 版本号信息和说明
-1.0.2 已经发布，beta测试中。
+1.0   第一版发布。
+1.0.1 taobao api、 百度 api 发布。
+1.0.2 支持主流五大 oauth 2.0 服务发布。
+1.0.3 支持第六大主流，weibo.com 。
+1.0.4 修正 class_http_client 完善weibo api 发布。
+
+1.1 支持 myqee 框架
+
+	如果没有登录会自动引向登录地址，选择哪个登录取决于 GET[sp] 和 default sp
+
+        $sp         = Core::config('oauth.sp');
+        $default_sp = Core::config('oauth.default_sp');
+        $op     = new oauth_client($sp, $default_sp);
+
+	验证是否登录了
+        $token  = new oauth_token();
+        $token->is_login();
+
+	下面代码只适用于调试及非myqee场合。
+
+	配置文件参考： oauth.config.php 复制到 config 目录中。
+	将所有子目录直接复制到 项目目录下的 class 目录中就可以了。
+	非子目录下的内容 可以不用部署到 myqee项目中。
+
 
 ## 报告错误
 
@@ -27,44 +50,6 @@ oauthclient
 ## 交流
 
 * QQ 85120358
-
-
-## 演示
-
-使用起来很简单，直接查看 demo.php 就可以了。
-
-config.php的 demo如下
-
-<?php
-
-
-$oauth_sp = array(
-	'taobao'=>array( // http://my.open.taobao.com/xtao/website_list.htm
-		'client_id'=>'',
-		'client_secret'=>''),
-	'renren'=>array( // http://app.renren.com/developers/newapp
-		'client_id'=>'',
-		'client_secret'=>''),
-	'baidu'=>array( // http://developer.baidu.com/dev#/applist!type=2&only_channel_list=1
-		'client_id' => '',
-		'client_secret' => '',
-		'method'=>'get',),
-	'qq'=>array( // http://connect.qq.com/manage/
-		'client_id' => '',
-		'client_secret' => '',
-		// 下面两行不要修改
-		'scope' => 'get_user_info add_share,check_page_fans,add_t,del_t,add_pic_t,get_repost_list,get_info,get_other_info,get_fanslist,get_idollist,add_idol,del_idol,match_nick_tips_weibo,get_intimate_friends_weibo',
-		'method'=>'get',),
-	'microsoft'=>array(// https://manage.dev.live.com/Applications/Index
-		'client_id'=>'',
-		'client_secret'=>'',
-		// 下面两行不要修改
-		'scope'=>'wl.signin wl.basic',
-		'method'=>'get',
-		),
-	);
-
-
 
 ## Authors
 

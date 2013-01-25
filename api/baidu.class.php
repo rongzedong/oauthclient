@@ -17,7 +17,7 @@
  * 2013.1.18 rong zedong.
  **/
 
-class baidu_api
+class api_baidu
 {
 
 	var $fields = array(
