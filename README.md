@@ -53,7 +53,7 @@ oauthclient
 
 ## Authors
 
-**rongzedongo**
+**rongzedong**
 
 + http://www.oo8h.com
 + http://github.com/rongzedong
